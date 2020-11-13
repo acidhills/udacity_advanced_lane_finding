@@ -45,9 +45,9 @@ def get_tresholded_img(image):
     s_channel = hls[:,:,2]
 #     gradx = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(20, 100))
 #     grady = abs_sobel_thresh(s_channel, orient='y', sobel_kernel=ksize, thresh=(20, 100))
-    dir_binary = dir_threshold(s_channel, sobel_kernel=ksize, thresh=(0.7, 1.3))
+    dir_binary = dir_threshold(s_channel+l_channel, sobel_kernel=ksize, thresh=(0.5, 1.3))
 
-    mag_binary = mag_thresh(s_channel, sobel_kernel=ksize, mag_thresh=(30, 100))
+    mag_binary = mag_thresh(s_channel+l_channel, sobel_kernel=ksize, mag_thresh=(20, 100))
     combined = dir_binary * mag_binary # * gradx * grady
     
     

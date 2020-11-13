@@ -30,6 +30,30 @@ def getPerspectiveTransformMatrix():
     src = np.float32([[500,500], [800,500],[250,700], [1150,700]])
     dst = np.float32([[400,0],[1050,0],[400,700],[1050,700]])
     
+    src = np.float32([[500,500], [800,500],[250,700], [1150,700]])
+    dst = np.float32([[400,0],[1050,0],[400,700],[1050,700]])
+
+    xlen, ylen = 1280,720
+
+    road = 600
+
+    road_narrow = road *0.33
+    road_wide = road*1.5
+    yk = 0.67
+
+    src = np.int32([[(xlen/2) -road_narrow/2 ,ylen*yk],
+                    [(xlen/2) +road_narrow/2 ,ylen*yk],
+                    [(xlen/2) +road_wide/2, ylen],
+                    [(xlen/2) -road_wide/2, ylen]
+                   ])
+    
+    dst = np.int32([[(xlen/2) -road/2 ,0],
+                    [(xlen/2) +road/2 ,0],
+                    [(xlen/2) +road/2, ylen],
+                    [(xlen/2) -road/2, ylen]])
+    src = np.float32(src)
+    dst = np.float32(dst)
+#     print(src,'\n',dst)
     M = cv2.getPerspectiveTransform(src, dst)
     Minv = cv2.getPerspectiveTransform(dst, src)
     return M,Minv
