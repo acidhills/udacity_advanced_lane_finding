@@ -43,6 +43,8 @@ def get_tresholded_img(image):
     hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
     l_channel = hls[:,:,1]
     s_channel = hls[:,:,2]
+    l_channel = cv2.equalizeHist(l_channel)
+    s_channel = cv2.equalizeHist(s_channel)
 #     gradx = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(20, 100))
 #     grady = abs_sobel_thresh(s_channel, orient='y', sobel_kernel=ksize, thresh=(20, 100))
     dir_binary = dir_threshold(s_channel+l_channel, sobel_kernel=ksize, thresh=(0.5, 1.3))

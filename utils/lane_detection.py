@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 
 def find_lane_pixels_(binary_warped, nwindows = 9, margin = 50, minpix = 50):
     histogram = np.sum(binary_warped[binary_warped.shape[0]//2:,:], axis=0)
@@ -83,7 +84,7 @@ def fill_poly_(image,left_fitx,right_fitx,ploty, color):
     points = np.int32(points)
     cv2.fillPoly(image, [points], color=color)
     
-def get_lanes(binary_warped):
+def get_lanes(binary_warped, debug = False):
     leftx, lefty, rightx, righty, rectangels = find_lane_pixels_(binary_warped)
     left_fit = np.polyfit(lefty,leftx,2)
     right_fit = np.polyfit(righty,rightx,2)
@@ -92,16 +93,21 @@ def get_lanes(binary_warped):
     
     
     out_img = np.dstack((binary_warped, binary_warped, binary_warped))
-    out_img[:,:] = [0,0,0,]
-#     for low, high in [rectangels[0]]:        
-#         cv2.rectangle(out_img,low,high,(0,255,0), 2) 
-    fill_poly_(out_img,left_fitx,right_fitx,ploty,[0, 0, 255])
+    if debug:
+        for low, high in rectangels:        
+            cv2.rectangle(out_img,low,high,(0,255,0), 2) 
+        
+        out_img[lefty, leftx] = [255, 0, 0]
+        out_img[righty, rightx] = [0, 0, 255]
+    
+        plt.plot(left_fitx, ploty, color='yellow')
+        plt.plot(right_fitx, ploty, color='yellow')
+    else:
+        out_img[:,:] = [0,0,0,]
+        fill_poly_(out_img,left_fitx,right_fitx,ploty,[0, 255, 0])
     
 #     out_img[lefty, leftx] = [255, 0, 0]
 #     out_img[righty, rightx] = [0, 0, 255]
-    
-#     plt.plot(left_fitx, ploty, color='yellow')
-#     plt.plot(right_fitx, ploty, color='yellow')
 #     out_img[np.int32(ploty),np.int32(left_fitx)] = [0,177,228]
 #     out_img[np.int32(ploty),np.int32(left_fitx) + 2] = [0,177,228]
 #     out_img[np.int32(ploty),np.int32(left_fitx) + 1] = [0,177,228]
