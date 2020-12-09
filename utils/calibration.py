@@ -27,11 +27,6 @@ def clalibrate_camera(imgs):
     return mtx, dist, rvecs, tvecs, object_points, image_points
 
 def getPerspectiveTransformMatrix():    
-    src = np.float32([[500,500], [800,500],[250,700], [1150,700]])
-    dst = np.float32([[400,0],[1050,0],[400,700],[1050,700]])
-    
-    src = np.float32([[500,500], [800,500],[250,700], [1150,700]])
-    dst = np.float32([[400,0],[1050,0],[400,700],[1050,700]])
 
     xlen, ylen = 1280,720
 
@@ -51,9 +46,13 @@ def getPerspectiveTransformMatrix():
                     [(xlen/2) +road/2 ,0],
                     [(xlen/2) +road/2, ylen],
                     [(xlen/2) -road/2, ylen]])
+    
+  
     src = np.float32(src)
     dst = np.float32(dst)
 #     print(src,'\n',dst)
     M = cv2.getPerspectiveTransform(src, dst)
     Minv = cv2.getPerspectiveTransform(dst, src)
     return M,Minv
+
+    

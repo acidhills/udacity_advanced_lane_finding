@@ -37,24 +37,47 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
     binary[(direction >= thresh[0]) & (direction <= thresh[1])] = 1
     return binary
 
-def get_tresholded_img(image):
+def filter_with_hough(binary):
+    output = np.zeros_like(binary)
+    hough = cv2.HoughLinesP(binary, 1, (np.pi/180)*1, 1, np.array([]), minLineLength=8, maxLineGap=5)
+    for x1,y1,x2,y2 in [x[0] for x in hough]:
+        cv2.line(output,(x1,y1),(x2,y2),(255,255,255),2)
+    return output
+
+
+
+def get_tresholded_img(image, with_hogh=True):
     ksize = 3 
-    
+    gkernel_size = 17
+    image = cv2.GaussianBlur(image, (gkernel_size, gkernel_size), 0)
+#     return image
     hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
     l_channel = hls[:,:,1]
     s_channel = hls[:,:,2]
+#     h_channel = hls[:,:,0]
     l_channel = cv2.equalizeHist(l_channel)
     s_channel = cv2.equalizeHist(s_channel)
-#     gradx = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(20, 100))
-#     grady = abs_sobel_thresh(s_channel, orient='y', sobel_kernel=ksize, thresh=(20, 100))
-    dir_binary = dir_threshold(s_channel+l_channel, sobel_kernel=ksize, thresh=(0.5, 1.3))
+#     h_channel = cv2.equalizeHist(s_channel)
+    working_channel = l_channel + s_channel
+    gradx = abs_sobel_thresh(working_channel, orient='x', sobel_kernel=ksize, thresh=(10, 100))
+#     grady = abs_sobel_thresh(working_channel, orient='y', sobel_kernel=ksize, thresh=(20, 100))
+    dir_binary = dir_threshold(working_channel, sobel_kernel=ksize, thresh=(0.5, 1.2))
 
-    mag_binary = mag_thresh(s_channel+l_channel, sobel_kernel=ksize, mag_thresh=(20, 100))
-    combined = dir_binary * mag_binary # * gradx * grady
+#     mag_binary = mag_thresh(working_channel, sobel_kernel=ksize, mag_thresh=(20, 100))
+    
+#     combined = dir_binary * mag_binary # * gradx * grady
     
     
-#     combined = gradx
+    combined = gradx *dir_binary
+#     combined = (gradx + gradx2)*dir_binary
 #     combined = grady
 #     combined = mag_binary
 #     combined = dir_binary
-    return combined
+#     combined =  l_channel
+#     combined = s_channel 
+#     combined = h_channel
+    combined_image = np.array(combined * 255, dtype = np.uint8)
+    houghed_image = None
+    if with_hogh:
+        houghed_image = filter_with_hough(combined_image)
+    return combined_image, houghed_image
