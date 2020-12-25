@@ -45,39 +45,48 @@ def filter_with_hough(binary):
     return output
 
 
-
-def get_tresholded_img(image, with_hogh=True):
-    ksize = 3 
+def color_treshold(binary, treshold=(170,255)):
+    thresh_min = treshold[0]
+    thresh_max = treshold[1]
+    r_binary = np.zeros_like(binary)
+    r_binary[(binary >= thresh_min) & (binary <= thresh_max)] = 1
+    return r_binary
+    
+def get_tresholded_img(image):
+    ksize = 15 
     gkernel_size = 17
     image = cv2.GaussianBlur(image, (gkernel_size, gkernel_size), 0)
 #     return image
     hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
+    L = lab[:,:,0]
+#     a = lab[:,:,1]
+#     b = lab[:,:,2]
     l_channel = hls[:,:,1]
     s_channel = hls[:,:,2]
 #     h_channel = hls[:,:,0]
     l_channel = cv2.equalizeHist(l_channel)
     s_channel = cv2.equalizeHist(s_channel)
 #     h_channel = cv2.equalizeHist(s_channel)
+    gray = cv2.equalizeHist(gray)
+    
+    L = cv2.equalizeHist(L)
+    
     working_channel = l_channel + s_channel
-    gradx = abs_sobel_thresh(working_channel, orient='x', sobel_kernel=ksize, thresh=(10, 100))
+#     mag_binary = mag_thresh(s_channel, sobel_kernel=ksize, mag_thresh=(25, 100))
+#     s_binary = color_treshold(s_channel, (170,255))
+#     gradx = abs_sobel_thresh(working_channel, orient='x', sobel_kernel=ksize, thresh=(25, 100))
+#     gradx = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(25, 100))
 #     grady = abs_sobel_thresh(working_channel, orient='y', sobel_kernel=ksize, thresh=(20, 100))
-    dir_binary = dir_threshold(working_channel, sobel_kernel=ksize, thresh=(0.5, 1.2))
+    dir_binary = dir_threshold(s_channel, sobel_kernel=ksize, thresh=(0.7, 1.3))
 
-#     mag_binary = mag_thresh(working_channel, sobel_kernel=ksize, mag_thresh=(20, 100))
+    gradx = abs_sobel_thresh(working_channel, orient='x', sobel_kernel=ksize, thresh=(25, 100))
     
-#     combined = dir_binary * mag_binary # * gradx * grady
+    binary_l = color_treshold(L, (200,255))
     
-    
-    combined = gradx *dir_binary
-#     combined = (gradx + gradx2)*dir_binary
-#     combined = grady
-#     combined = mag_binary
-#     combined = dir_binary
-#     combined =  l_channel
-#     combined = s_channel 
-#     combined = h_channel
+    combined = np.zeros_like(s_channel)
+#     (s_binary == 1) |
+    combined[ (binary_l == 1)| (gradx*dir_binary == 1)] = 1
     combined_image = np.array(combined * 255, dtype = np.uint8)
-    houghed_image = None
-    if with_hogh:
-        houghed_image = filter_with_hough(combined_image)
-    return combined_image, houghed_image
+    return combined_image

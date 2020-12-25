@@ -2,6 +2,28 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+
+def curvature(left_fit, right_fit,img):
+    def curv_(x,y):
+        ym_per_pix = 30/720 
+        xm_per_pix = 3.7/700 
+        x_ = x*xm_per_pix
+        y_ = y *  ym_per_pix
+        fit = np.polyfit(y_,x_,2) 
+
+        A = fit[0]
+        B = fit[1]
+        y_ = np.max(y_)
+        r = ((1 +(2*A*y_+B)**2)**1.5)/np.absolute(2*A)
+        return r
+    
+    left_fitx,right_fitx,ploty = get_fit_(left_fit, right_fit,img)
+    l_curv = curv_(left_fitx,ploty)
+    r_curv = curv_(right_fitx,ploty)
+    return np.mean([l_curv,r_curv])
+    
+    
+
 def hist(img,hist_window = 5, y_k = 2):
     ylen = int(img.shape[0] / y_k)
     
@@ -58,12 +80,9 @@ def search_around_poly_(binary_warped,left_fit,right_fit, margin = 100):
     righty = nonzeroy[right_lane_inds]
     return leftx, lefty, rightx, righty
 
-def find_lane_pixels_(binary_warped,warped_hoffed = None, nwindows = 9, margin = 100, minpix = 50):
+def find_lane_pixels_(binary_warped,nwindows = 9, margin = 100, minpix = 50):
     hist_img = binary_warped
-    hist_window = 5
-    if warped_hoffed is not None:
-        hist_img = warped_hoffed
-    
+    hist_window = 5    
     histogram = hist(hist_img,hist_window)
     midpoint = np.int(histogram.shape[0]//2)
     leftx_base = np.argmax(histogram[:midpoint]) +hist_window
@@ -157,11 +176,11 @@ class LaneDetector:
     def print_stats(self):
         print("Recalcs: {}, Fits_changed: {}".format(self.recalc_counter, self.fits_changed))
          
-    def get_lanes(self, binary_warped,warped_hoffed = None, debug = False, enable_drop_fix = True, enable_smothing = True, smooth_k = 0.7):
+    def get_lanes(self, binary_warped,debug = False, enable_drop_fix = True, enable_smothing = True, smooth_k = 0.7):
         rectangels = None
         if (not enable_smothing) or (self.i%10 == 0) or (self.left_fit is None) or (self.right_fit is None):
             self.recalc_counter+=1
-            leftx, lefty, rightx, righty, rectangels = find_lane_pixels_(binary_warped,warped_hoffed)
+            leftx, lefty, rightx, righty, rectangels = find_lane_pixels_(binary_warped)
         else:
             leftx, lefty, rightx, righty = search_around_poly_(binary_warped,self.left_fit,self.right_fit)
         if len(leftx)!=0:
@@ -174,25 +193,26 @@ class LaneDetector:
         else:
             new_right_fit = self.right_fit
         
+        
         if(self.left_fit is None or self.right_fit is None):
             self.left_fit = new_left_fit
             self.right_fit = new_right_fit
-        else:
-            left_diff = abs(self.left_fit[2] - new_left_fit[2])
-            right_diff = abs(self.right_fit[2] - new_right_fit[2]) 
-            diff_k = 0.4
-            fit_diff = (new_right_fit[2]-new_left_fit[2])
-            if((not enable_drop_fix) or(fit_diff < 600 and fit_diff>300)):
-                self.fits_changed += 1
-                k = smooth_k
-                self.left_fit = k*self.left_fit + (1-k)* new_left_fit
-                self.right_fit = k*self.right_fit + (1-k)* new_right_fit
+#         else:
 
-
-
+        left_diff = abs(self.left_fit[2] - new_left_fit[2])
+        right_diff = abs(self.right_fit[2] - new_right_fit[2]) 
+        fit_diff = (new_right_fit[2]-new_left_fit[2])
+        if((not enable_drop_fix) or(fit_diff < 600 and fit_diff>300)):
+            self.fits_changed += 1
+            k = smooth_k
+            self.left_fit = k*self.left_fit + (1-k)* new_left_fit
+            self.right_fit = k*self.right_fit + (1-k)* new_right_fit
+        
+        
+        
+        curv = curvature(self.left_fit,self.right_fit, binary_warped)
+            
         left_fitx,right_fitx,ploty = get_fit_(self.left_fit,self.right_fit,binary_warped)
-
-
         out_img = np.dstack((binary_warped, binary_warped, binary_warped))
         if debug:
             if rectangels is not None:
@@ -208,4 +228,4 @@ class LaneDetector:
             out_img[:,:] = [0,0,0,]
             fill_poly_(out_img,left_fitx,right_fitx,ploty,[0, 255, 0])
         self.i += 1
-        return out_img
+        return out_img,curv
