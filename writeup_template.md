@@ -31,6 +31,10 @@ The goals / steps of this project are the following:
 [orginal2]: ./images/original.jpg
 [undistorted2]: ./images/undistorted.jpg
 [tresholding]: ./images/tresholding.jpg
+[perspective_unwarped]: ./images/perspective_unwarped.jpg
+[perspective_warped]: ./images/perspective_warped.jpg
+[lane_search]: ./images/lane_search.jpg
+[result]: ./images/result.jpg
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -52,64 +56,72 @@ I then used the output `objpoints` and `imgpoints` to compute the camera calibra
 
 ### Pipeline (single images)
 
-#### 1. Provide an example of a distortion-corrected image.
+#### 1. Distortion-corrected image.
 
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
 ![original][orginal2]
 ![undistorted_image][undistorted2]
 
-#### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
+#### 2. Color transforms, gradients or other.
 
 I used a combination of color and gradient thresholds to generate a binary image (thresholding steps in function 'get_tresholded_img()' in `tresholding.py`). 
-Speaken exactly, I used `cv2.GaussianBlur()` to reduce count of small particles, `cv2.equalizeHist` for all channels to normalize them. Then I used s_chanel from HLS with direction sobel operator, combination of S and L channels from HLS with x oriented sobel and L channel from LAB color scpace with color thresholding.
+Speaken exactly, I used `cv2.GaussianBlur()` to reduce count of small particles, `cv2.equalizeHist` for all channels to normalize them. Then I used s_chanel from HLS with direction sobel operator, combination of S and L channels from HLS with x oriented sobel and L channel from LAB color scpace with color thresholding. Also, I had tryed to use hofflines to reduce count of particles but after several experiments deleted this step. 
 All this actions produced the next result:
 ![tresholded image][tresholding]
 
-#### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
+#### 3. Perspective transform.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code for my perspective transform includes a function called `getPerspectiveTransformMatrix()`, which appears in  the file `./utils/calibration.py`.  The `getPerspectiveTransformMatrix()` function takes as inputs an image (`img`).  I chose the next alghoritm for obtaining the source and the destination points:
 
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
 ```
+    xlen, ylen = 1280,720
 
-This resulted in the following source and destination points:
+    road = 600
 
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+    road_narrow = road *0.33
+    road_wide = road*1.5
+    yk = 0.67
+
+    src = np.int32([[(xlen/2) -road_narrow/2 ,ylen*yk],
+                    [(xlen/2) +road_narrow/2 ,ylen*yk],
+                    [(xlen/2) +road_wide/2, ylen],
+                    [(xlen/2) -road_wide/2, ylen]
+                   ])
+    
+    dst = np.int32([[(xlen/2) -road/2 ,0],
+                    [(xlen/2) +road/2 ,0],
+                    [(xlen/2) +road/2, ylen],
+                    [(xlen/2) -road/2, ylen]])
+    
+```
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![alt text][image4]
+![alt perspective_unwarped][perspective_unwarped]
+![alt perspective_warped][perspective_warped]
 
-#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+#### 4. Lane identification and fitting,
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+The line detection alghoritm lies in `utils/lane_detection.py`, `LaneDetector` class, `get_lanes` method. I used provided by course alghoritm with several improvements. First of all I added sliding window, histogramm wich summs pixel count for each 5 neighborhood dots, which should help us to choose shortlines against particles clouds. Next I choose less obvious side(side with smaller detected dost), and search line in it with the hire treshold, which again helps us to detect short lines.
+Also, I added several checks, which helps us to avoid using lanes with too wide or thin gap between thems, and added standar smothing technic, which uses only 30% of new line coeficients. 
+And, at last, I use lightweited search around poly function, but to avoid too big errors I make full recalculations every 10 frames.
 
-![alt text][image5]
+Additionally, not during the lane search, but just before it, inside the Processor class, before this step and after previous, I cut 200 pixels from left and right sides of the image. 
 
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+Here is the result:
+![lane_search][lane_search]
 
-I did this in lines # through # in my code in `my_other_file.py`
+#### 5. Curvature.
+This is an easy part, i just use standart formula ((1 + (2 * A * y +B)^2)^1.5)/absolute(2 * A) where A and B is polynomial coefficients from formula y = A * x^2 + B * x + C. The only interesting thing is, that I refit identified lane points with respect to real world distance coefficients.
+All this staff is located in `utils/lane_detection.py` file,  `curvature` function, anb it used inside `LaneDetector` class.
 
-#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
 
-![alt text][image6]
+#### 6. Example of image.
+
+The whole piplene is implemented inside `Processor` class in `project.ipynb` notebook.  Here is an example of my result on a test image:
+
+![result][result]
 
 ---
 
@@ -117,7 +129,7 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./project_video_out.mp4)
 
 ---
 

@@ -69,7 +69,7 @@ def get_tresholded_img(image):
     l_channel = cv2.equalizeHist(l_channel)
     s_channel = cv2.equalizeHist(s_channel)
 #     h_channel = cv2.equalizeHist(s_channel)
-    gray = cv2.equalizeHist(gray)
+#     gray = cv2.equalizeHist(gray)
     
     L = cv2.equalizeHist(L)
     
@@ -86,7 +86,6 @@ def get_tresholded_img(image):
     binary_l = color_treshold(L, (200,255))
     
     combined = np.zeros_like(s_channel)
-#     (s_binary == 1) |
     combined[ (binary_l == 1)| (gradx*dir_binary == 1)] = 1
     combined_image = np.array(combined * 255, dtype = np.uint8)
     return combined_image
