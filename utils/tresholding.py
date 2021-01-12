@@ -60,18 +60,24 @@ def get_tresholded_img(image):
     hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
-    L = lab[:,:,0]
+    luv = cv2.cvtColor(image, cv2.COLOR_BGR2LUV)
+    
+#     L = lab[:,:,0]
 #     a = lab[:,:,1]
-#     b = lab[:,:,2]
+    lab_b = lab[:,:,2]
+    luv_l = luv[:,:,0]
+    
     l_channel = hls[:,:,1]
     s_channel = hls[:,:,2]
 #     h_channel = hls[:,:,0]
     l_channel = cv2.equalizeHist(l_channel)
     s_channel = cv2.equalizeHist(s_channel)
+    lab_b = cv2.equalizeHist(lab_b)
+    luv_l = cv2.equalizeHist(luv_l)
 #     h_channel = cv2.equalizeHist(s_channel)
-#     gray = cv2.equalizeHist(gray)
+    gray = cv2.equalizeHist(gray)
     
-    L = cv2.equalizeHist(L)
+#     L = cv2.equalizeHist(L)
     
     working_channel = l_channel + s_channel
 #     mag_binary = mag_thresh(s_channel, sobel_kernel=ksize, mag_thresh=(25, 100))
@@ -79,13 +85,14 @@ def get_tresholded_img(image):
 #     gradx = abs_sobel_thresh(working_channel, orient='x', sobel_kernel=ksize, thresh=(25, 100))
 #     gradx = abs_sobel_thresh(s_channel, orient='x', sobel_kernel=ksize, thresh=(25, 100))
 #     grady = abs_sobel_thresh(working_channel, orient='y', sobel_kernel=ksize, thresh=(20, 100))
-    dir_binary = dir_threshold(s_channel, sobel_kernel=ksize, thresh=(0.7, 1.3))
-
+    dir_binary = dir_threshold(s_channel, sobel_kernel=ksize, thresh=(0.4, 1.3))
     gradx = abs_sobel_thresh(working_channel, orient='x', sobel_kernel=ksize, thresh=(25, 100))
     
-    binary_l = color_treshold(L, (200,255))
-    
+    lab_b = color_treshold(lab_b, (249,255))
+    luv_l = color_treshold(luv_l, (249,255))
+    hls_s = color_treshold(s_channel, (249,255))
     combined = np.zeros_like(s_channel)
-    combined[ (binary_l == 1)| (gradx*dir_binary == 1)] = 1
+#     | (gradx*dir_binary == 1)
+    combined[(lab_b == 1)|(luv_l ==1)| (hls_s == 1)] = 1
     combined_image = np.array(combined * 255, dtype = np.uint8)
     return combined_image

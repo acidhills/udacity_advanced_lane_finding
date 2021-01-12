@@ -20,7 +20,7 @@ def curvature(left_fit, right_fit,img):
     left_fitx,right_fitx,ploty = get_fit_(left_fit, right_fit,img)
     l_curv = curv_(left_fitx,ploty)
     r_curv = curv_(right_fitx,ploty)
-    return np.mean([l_curv,r_curv])
+    return np.mean([l_curv,r_curv]),l_curv,r_curv
     
     
 
@@ -172,6 +172,7 @@ class LaneDetector:
         self.i = 0
         self.recalc_counter = 0
         self.fits_changed = 0
+        self.curr_curv = None
     
     def print_stats(self):
         print("Recalcs: {}, Fits_changed: {}".format(self.recalc_counter, self.fits_changed))
@@ -202,15 +203,25 @@ class LaneDetector:
         left_diff = abs(self.left_fit[2] - new_left_fit[2])
         right_diff = abs(self.right_fit[2] - new_right_fit[2]) 
         fit_diff = (new_right_fit[2]-new_left_fit[2])
-        if((not enable_drop_fix) or(fit_diff < 600 and fit_diff>300)):
+        if((not enable_drop_fix) or(fit_diff < 800 and fit_diff>400)):
             self.fits_changed += 1
             k = smooth_k
             self.left_fit = k*self.left_fit + (1-k)* new_left_fit
             self.right_fit = k*self.right_fit + (1-k)* new_right_fit
         
         
+#         curv, lc,rc = curvature(new_left_fit,new_right_fit, binary_warped)
+#         if(max(lc,rc) / min(lc,rc) < 4 ):
+#             self.fits_changed += 1
+#             k = smooth_k
+#             self.left_fit = k*self.left_fit + (1-k)* new_left_fit
+#             self.right_fit = k*self.right_fit + (1-k)* new_right_fit
         
-        curv = curvature(self.left_fit,self.right_fit, binary_warped)
+        
+        curv, lc,rc = curvature(self.left_fit,self.right_fit, binary_warped)
+        if(max(lc,rc) / min(lc,rc) < 4 ):
+            self.curr_curv = curv
+            
             
         left_fitx,right_fitx,ploty = get_fit_(self.left_fit,self.right_fit,binary_warped)
         out_img = np.dstack((binary_warped, binary_warped, binary_warped))
@@ -228,4 +239,4 @@ class LaneDetector:
             out_img[:,:] = [0,0,0,]
             fill_poly_(out_img,left_fitx,right_fitx,ploty,[0, 255, 0])
         self.i += 1
-        return out_img,curv
+        return out_img,self.curr_curv,lc,rc
